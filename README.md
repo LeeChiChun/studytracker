@@ -57,6 +57,18 @@ graph TD
 
 ---
 
+## Screenshots
+
+| Dashboard | Flashcard Review |
+|-----------|-----------------|
+| ![Dashboard](docs/images/dashboard.png) | ![Flashcard](docs/images/flashcard.png) |
+
+| Chapter Setup | Chapter Timer |
+|--------------|---------------|
+| ![Chapter Setup](docs/images/chapter_review.png) | ![Chapter Timer](docs/images/chapter_timer.png) |
+
+---
+
 ## Installation
 
 ```bash
