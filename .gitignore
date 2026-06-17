@@ -9,3 +9,12 @@ dist/
 .DS_Store
 data/
 *.env
+*.log
+
+# lee-workflow 內部工作文件
+PROJECT.md
+docs/progress.md
+docs/decisions.md
+docs/abstractions.md
+docs/tasks/
+docs/installs.md
