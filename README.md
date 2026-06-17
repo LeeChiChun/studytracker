@@ -18,41 +18,41 @@ A macOS desktop app for spaced-repetition vocabulary review and chapter study, b
 
 ```mermaid
 graph TD
-    subgraph Presentation
+    subgraph PRES[Presentation]
         MW[MainWindow]
         DT[DashboardTab]
         FW[FlashcardWindow]
         CRW[ChapterReviewWidget]
     end
 
-    subgraph Control
+    subgraph CTRL[Control]
         VC[VocabController]
         CC[ChapterController]
         SC[SettingsController]
     end
 
-    subgraph Mediator
+    subgraph MED[Mediator]
         Cache[SessionCache]
     end
 
-    subgraph Entity
+    subgraph ENT[Entity]
         Vocab[Vocab]
         Chapter[Chapter]
         Subject[Subject]
         Settings[SettingsModel]
     end
 
-    subgraph Foundation
-        FSRS[fsrs_engine.py\nFSRS v6.3.1]
-        SM2[scheduler.py\nSM-2]
-        Store[json_store.py]
+    subgraph FOUND[Foundation]
+        FSRS[fsrs_engine]
+        SM2[scheduler]
+        Store[json_store]
     end
 
-    Presentation --> Control
-    Control --> Mediator
-    Control --> Entity
-    Mediator --> Foundation
-    Foundation --> Entity
+    PRES --> CTRL
+    CTRL --> MED
+    CTRL --> ENT
+    MED --> FOUND
+    FOUND --> ENT
 ```
 
 ---
