@@ -3,9 +3,10 @@ from datetime import datetime, timezone, date, timedelta
 
 _MAX_INTERVAL = 365
 
-# Stability values above this threshold are considered suspected pollution.
-# Set at 2× the scheduling cap: if stability > 730 and reviews exist, reschedule from history.
-_STABILITY_GUARD = 730.0
+# Stability values above this threshold are suspected pollution.
+# Set at ~2× the max observed clean value (44 days) after comprehensive re-clean 2026-06-20.
+# Any stored stability > 100 with review history triggers a full reschedule_card() replay.
+_STABILITY_GUARD = 100.0
 
 _SCHEDULER = Scheduler(
     learning_steps=[timedelta(minutes=1), timedelta(days=1)],
