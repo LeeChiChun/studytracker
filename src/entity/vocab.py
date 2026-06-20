@@ -16,6 +16,7 @@ class Vocab:
     fsrs_stability: float = None
     fsrs_difficulty: float = None
     fsrs_due: str = ""
+    fsrs_step: int = None
 
     def to_dict(self) -> dict:
         return {
@@ -32,6 +33,7 @@ class Vocab:
             "fsrs_stability": self.fsrs_stability,
             "fsrs_difficulty": self.fsrs_difficulty,
             "fsrs_due": self.fsrs_due,
+            "fsrs_step": self.fsrs_step,
         }
 
     @classmethod
@@ -50,4 +52,5 @@ class Vocab:
             fsrs_stability=data.get("fsrs_stability"),
             fsrs_difficulty=data.get("fsrs_difficulty"),
             fsrs_due=data.get("fsrs_due", ""),
+            fsrs_step=data.get("fsrs_step"),
         )

@@ -1,7 +1,11 @@
-from fsrs import Card, Rating, Scheduler, State
+from fsrs import Card, Rating, ReviewLog, Scheduler, State
 from datetime import datetime, timezone, date, timedelta
 
 _MAX_INTERVAL = 365
+
+# Stability values above this threshold are considered suspected pollution.
+# Set at 2× the scheduling cap: if stability > 730 and reviews exist, reschedule from history.
+_STABILITY_GUARD = 730.0
 
 _SCHEDULER = Scheduler(
     learning_steps=[timedelta(minutes=1), timedelta(days=1)],
@@ -30,16 +34,46 @@ _RATING_MAP = {
 }
 
 
+def _reschedule_from_history(reviews: list) -> Card:
+    """Replay review history from scratch via reschedule_card().
+
+    Used when stored stability exceeds _STABILITY_GUARD to produce a clean card
+    that reflects only what the current algorithm would compute from the same history.
+    """
+    fresh = Card()
+    logs = [
+        ReviewLog(
+            card_id=fresh.card_id,
+            rating=_RATING_MAP[r["rating"]],
+            review_datetime=datetime.fromisoformat(
+                r["date"] if "T" in r["date"] else r["date"] + "T12:00:00"
+            ).replace(tzinfo=timezone.utc),
+            review_duration=None,
+        )
+        for r in reviews
+    ]
+    return _SCHEDULER.reschedule_card(fresh, logs)
+
+
 def _build_card(vocab: dict) -> Card:
+    stability = vocab.get("fsrs_stability")
+    reviews   = vocab.get("reviews", [])
+
+    # Guard: stability above threshold with review history → suspected pollution
+    if stability and stability > _STABILITY_GUARD and reviews:
+        return _reschedule_from_history(reviews)
+
     card = Card()
     fsrs_state = vocab.get("fsrs_state", "new")
     if fsrs_state in _STATE_MAP:
         card.state = _STATE_MAP[fsrs_state]
-    if vocab.get("fsrs_stability"):
-        card.stability = float(vocab["fsrs_stability"])
+    if stability:
+        card.stability = float(stability)
     if vocab.get("fsrs_difficulty"):
         card.difficulty = float(vocab["fsrs_difficulty"])
-    reviews = vocab.get("reviews", [])
+    stored_step = vocab.get("fsrs_step")
+    if stored_step is not None:
+        card.step = stored_step
     if reviews:
         last_raw = reviews[-1]["date"]
         base = last_raw if "T" in last_raw else last_raw + "T00:00:00"
@@ -66,6 +100,7 @@ def schedule_vocab(vocab: dict, rating_str: str) -> dict:
     vocab["fsrs_stability"]  = round(new_card.stability, 4) if new_card.stability is not None else None
     vocab["fsrs_difficulty"] = round(new_card.difficulty, 4) if new_card.difficulty is not None else None
     vocab["fsrs_state"]      = _STATE_STR.get(new_card.state, "learning")
+    vocab["fsrs_step"]       = new_card.step
     vocab["fsrs_due"]        = due.strftime("%Y-%m-%dT%H:%M:%S")
     vocab["next_review"]     = (today + timedelta(days=interval_days)).isoformat()
     vocab["interval_days"]   = interval_days
