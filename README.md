@@ -8,7 +8,7 @@
 A macOS desktop app for spaced-repetition vocabulary review and chapter study, built with PyQt6.
 
 - **Vocabulary**: FSRS v6.3.1 algorithm — Again / Hard / Good / Easy scheduling up to 365 days
-- **Chapter review**: SM-2 algorithm — random question draw with 30-minute countdown timer
+- **Chapter review**: SM-2 algorithm — random question draw with 20-minute countdown timer
 - **Dark luxury theme**: consistent ACCENT_GOLD design across all screens
 - **Data stored locally**: `~/Library/Application Support/習習複習習/data/`
 

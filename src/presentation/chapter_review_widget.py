@@ -4,14 +4,75 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QSpinBox, QStackedWidget, QWidget,
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtCore import Qt, QTimer, QRectF, pyqtSignal
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen
 
 from src.control.chapter_controller import ChapterController
 from src.presentation.dialogs import show_error
 import src.presentation.theme as T
 
-_TIMER_SECONDS = 30 * 60
+_TIMER_SECONDS = 20 * 60  # 20 minutes
+
+
+class _ProgressRing(QWidget):
+    """Circular progress ring showing remaining-time ratio, with question number in the centre."""
+
+    _RING_W = 12
+    _SIZE   = 200
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._ratio: float = 1.0
+        self._text:  str   = ""
+        self.setFixedSize(self._SIZE, self._SIZE)
+
+    def set_ratio(self, ratio: float) -> None:
+        self._ratio = max(0.0, min(1.0, ratio))
+        self.update()
+
+    def set_text(self, text: str) -> None:
+        self._text = text
+        self.update()
+
+    def paintEvent(self, _event) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        w = h = self._SIZE
+        m = self._RING_W // 2 + 3          # margin so ring isn't clipped
+        ring_rect = QRectF(m, m, w - 2*m, h - 2*m)
+
+        # ── Background fill ────────────────────────────────────────────
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(T.SURFACE))
+        p.drawEllipse(0, 0, w, h)
+
+        # ── Track (dim full ring) ──────────────────────────────────────
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(QColor(T.SURFACE_ALT), self._RING_W,
+                      Qt.PenStyle.SolidLine, Qt.PenCapStyle.FlatCap))
+        p.drawEllipse(ring_rect)
+
+        # ── Progress arc (gold, remaining ratio) ───────────────────────
+        if self._ratio > 0.001:
+            p.setPen(QPen(QColor(T.ACCENT_GOLD), self._RING_W,
+                          Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            # start at 12 o'clock (90°), sweep counter-clockwise (positive span)
+            p.drawArc(ring_rect,
+                      90 * 16,
+                      int(self._ratio * 360 * 16))
+
+        # ── Centre text (question number) ──────────────────────────────
+        if self._text:
+            p.setPen(QPen(QColor(T.TEXT)))
+            f = QFont()
+            f.setPointSize(60)
+            f.setBold(True)
+            p.setFont(f)
+            p.drawText(QRectF(0, 0, w, h).toRect(),
+                       Qt.AlignmentFlag.AlignCenter, self._text)
+
+        p.end()
 
 _RATINGS = [
     ("Again", "again", T.RED),
@@ -76,7 +137,7 @@ class ChapterReviewWidget(QWidget):
         spin_row.addStretch()
         layout.addLayout(spin_row)
 
-        layout.addWidget(QLabel("計時：30 分鐘倒數"))
+        layout.addWidget(QLabel("計時：20 分鐘倒數"))
         layout.addStretch()
 
         start_btn = QPushButton("開始")
@@ -96,7 +157,7 @@ class ChapterReviewWidget(QWidget):
         layout.addStretch(1)
 
         # Timer — centered, 48pt gold
-        self._timer_label = QLabel("30:00")
+        self._timer_label = QLabel("20:00")
         self._timer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         timer_font = QFont()
         timer_font.setPointSize(48)
@@ -118,21 +179,9 @@ class ChapterReviewWidget(QWidget):
 
         layout.addSpacing(24)
 
-        # Number display — 72pt bold, circular dimmed background
-        self._question_label = QLabel("")
-        self._question_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._question_label.setFixedSize(200, 200)
-        self._question_label.setStyleSheet(
-            f"background:{T.SURFACE};"
-            f"border-radius:100px;"
-            f"color:{T.TEXT};"
-            f"border:none;"
-        )
-        num_font = QFont()
-        num_font.setPointSize(72)
-        num_font.setBold(True)
-        self._question_label.setFont(num_font)
-        layout.addWidget(self._question_label, alignment=Qt.AlignmentFlag.AlignHCenter)
+        # Progress ring — shows remaining-time ratio + question number
+        self._ring = _ProgressRing()
+        layout.addWidget(self._ring, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         layout.addSpacing(20)
 
@@ -201,7 +250,8 @@ class ChapterReviewWidget(QWidget):
         random.shuffle(self._pool)
         self._pool_idx = 0
         self._drawn_count = 0
-        self._question_label.setText("")
+        self._ring.set_ratio(1.0)
+        self._ring.set_text("")
         self._progress_label.setText(f"已抽 0 / {self._n} 題")
         self._stack.setCurrentIndex(1)
         self._timer.start()
@@ -213,7 +263,7 @@ class ChapterReviewWidget(QWidget):
         num = self._pool[self._pool_idx]
         self._pool_idx += 1
         self._drawn_count += 1
-        self._question_label.setText(str(num))
+        self._ring.set_text(str(num))
         position = ((self._drawn_count - 1) % self._n) + 1
         self._progress_label.setText(f"已抽 {position} / {self._n} 題")
 
@@ -233,6 +283,7 @@ class ChapterReviewWidget(QWidget):
         self._timer_label.setText(f"{mins:02d}:{secs:02d}")
         color = "#FF453A" if self._remaining < 5 * 60 else T.ACCENT_GOLD
         self._timer_label.setStyleSheet(f"color:{color};background:transparent;border:none;")
+        self._ring.set_ratio(self._remaining / _TIMER_SECONDS)
         if self._remaining <= 0:
             self._end_review()
 
